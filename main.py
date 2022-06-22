@@ -13,11 +13,13 @@
 
 
 import json
+import logging
 import os
-
 import requests
+import signal
+import sys
 from requests import get
-import urllib.parse
+from threading import Event
 
 # Array of domain names.
 domains = os.environ['DOMAINS'].split(',')
@@ -41,8 +43,8 @@ def get_external_ip_address() -> str:
 
 # Creates Data parameter.
 def create_json_data(
-    domain_name: str,
-    ip_address: str) -> str:
+        domain_name: str,
+        ip_address: str) -> str:
     data = {
         "fqdn": domain_name,
         "records": {
@@ -74,10 +76,56 @@ def send_request(data: str) -> requests.Response:
     return response
 
 
+# Class required for graceful exit from in docker container.
+class GracefulKiller:
+    kill_now = False
+    event = Event()
+
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, signum, frame):
+        self.event.set()
+        self.kill_now = True
+
+    def wait(self, seconds: int):
+        self.event.wait(seconds)
+
+
 # Main.
 if __name__ == '__main__':
-    ip_address = get_external_ip_address()
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    killer = GracefulKiller()
+    states = {}
+    logging.info('Script was started ...')
 
-    for domain_name in domains:
-        data = create_json_data(domain_name=domain_name, ip_address=ip_address)
-        send_request(data)
+    while True:
+        killer.wait(10 * 60)
+
+        if killer.kill_now:
+            logging.info('Exit was requested...')
+            break
+
+        try:
+            ip_address = get_external_ip_address()
+            logging.info(f'Current IP Address is {ip_address}.')
+
+            for domain_name in domains:
+                previous_ip_address = states.get(domain_name)
+
+                if (previous_ip_address is None) or (previous_ip_address != ip_address):
+                    data = create_json_data(domain_name=domain_name, ip_address=ip_address)
+                    response = send_request(data)
+                    decoded_answer = json.loads(response.text)
+
+                    if (response.status_code == 200)\
+                            and (decoded_answer['status'] == 'success')\
+                            and (decoded_answer['answer']['result'] is True):
+                        states[domain_name] = ip_address
+                        logging.info(f'Record for {domain_name} was updated to {ip_address} ...')
+
+        except Exception:
+            logging.exception('Exception was occur!')
+
+    logging.info('Script done.')
