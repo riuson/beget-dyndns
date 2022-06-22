@@ -104,8 +104,6 @@ if __name__ == '__main__':
     logging.info('Script was started ...')
 
     while True:
-        killer.wait(10 * 60)
-
         if killer.kill_now:
             logging.info('Termination requested...')
             break
@@ -123,11 +121,11 @@ if __name__ == '__main__':
                     decoded_answer = json.loads(response.text)
 
                     try:
-                    if (response.status_code == 200)\
-                            and (decoded_answer['status'] == 'success')\
-                            and (decoded_answer['answer']['result'] is True):
-                        states[domain_name] = ip_address
-                        logging.info(f'Record for {domain_name} was updated to {ip_address} successfully')
+                        if (response.status_code == 200)\
+                                and (decoded_answer['status'] == 'success')\
+                                and (decoded_answer['answer']['result'] is True):
+                            states[domain_name] = ip_address
+                            logging.info(f'Record for {domain_name} was updated to {ip_address} successfully')
                         else:
                             logging.error(
                                 f'Error was occur while processing domain {domain_name}! Response code: {response.status_code}.'
@@ -141,5 +139,7 @@ if __name__ == '__main__':
 
         except Exception:
             logging.exception('Exception was occur!')
+        finally:
+            killer.wait(10 * 60)
 
     logging.info('Script done.')
