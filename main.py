@@ -37,7 +37,6 @@ get_ip_url = os.environ['GET_IP_URL']
 # Gets external IP Address.
 def get_external_ip_address() -> str:
     result = get(get_ip_url).content.decode('utf8')
-    print('Our external IP address is: {}'.format(result))
     return result
 
 
@@ -95,7 +94,11 @@ class GracefulKiller:
 
 # Main.
 if __name__ == '__main__':
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s:%(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
     killer = GracefulKiller()
     states = {}
     logging.info('Script was started ...')
@@ -104,7 +107,7 @@ if __name__ == '__main__':
         killer.wait(10 * 60)
 
         if killer.kill_now:
-            logging.info('Exit was requested...')
+            logging.info('Termination requested...')
             break
 
         try:
@@ -119,11 +122,22 @@ if __name__ == '__main__':
                     response = send_request(data)
                     decoded_answer = json.loads(response.text)
 
+                    try:
                     if (response.status_code == 200)\
                             and (decoded_answer['status'] == 'success')\
                             and (decoded_answer['answer']['result'] is True):
                         states[domain_name] = ip_address
-                        logging.info(f'Record for {domain_name} was updated to {ip_address} ...')
+                        logging.info(f'Record for {domain_name} was updated to {ip_address} successfully')
+                        else:
+                            logging.error(
+                                f'Error was occur while processing domain {domain_name}! Response code: {response.status_code}.'
+                                f'Response text: "{response.text}".')
+                    except KeyError:
+                        logging.error(
+                            f'Error was occur while processing domain {domain_name}! Response code: {response.status_code}.'
+                            f'Response text: "{response.text}".')
+                else:
+                    logging.info(f'Record for {domain_name} already updated.')
 
         except Exception:
             logging.exception('Exception was occur!')
