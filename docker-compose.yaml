@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  beget-dyndns:
+    image: riuson/beget-dyndns
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      BEGET_LOGIN: "login"
+      BEGET_PASSW: "password"
+      DOMAINS: "mydomain.beget.com"
+      GET_IP_URL: "https://api.ipify.org"
+    restart: always
+    stop_grace_period: 1m
