@@ -7,9 +7,9 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      BEGET_LOGIN: "login"
-      BEGET_PASSW: "password"
-      DOMAINS: "mydomain.beget.com"
-      GET_IP_URL: "https://api.ipify.org"
+      BEGET_LOGIN: "${BEGET_LOGIN}"
+      BEGET_PASSW: "${BEGET_PASSW}"
+      DOMAINS: "${DOMAINS}"
+      GET_IP_URL: "${GET_IP_URL}"
     restart: always
     stop_grace_period: 1m
